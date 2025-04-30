@@ -1,0 +1,412 @@
+python -m venv venv
+venv/scrips/activate
+then u can install all what you want
+In FastAPI, when you use Body(...), you're saying:
+
+“This body parameter is required. If it's not included in the request, raise a validation error.”
+
+So it's basically equivalent to saying:
+“Hey FastAPI, don’t let this be optional — make sure it’s in the request.”
+لازم اعمل كلاس يعتبر كا مودل امشي عليه عشان اتاكد ان الحاجات الي اليوزر بيدخلها هيا دي الي انا عاوزها pydantic عشان استعمل 
+typing وعشان نخلي فيلد معين اوبشينال لازم ن امبورت من 
+to extract body without pydantic
+def create_post(payload:dict=Body(...)): #here what we do is we tell fast api to extract all the information from the body and convert it to dictionary then assign it to the variable called payload
+    return {"NewPost": f"title: {payload['title']}  content: {payload['content']}        "      }
+    print(payload)
+
+    we can return thaat information by pydantic to a dictionary by doing this 
+    def create_post(post:Post):
+    return{"post": post.dict()}
+    print(post)
+    the outpoot will looklike that
+    "post": {
+        "title": "weather",
+        "content": "the weather is awesome",
+        "voting": null,
+        "published": true
+    }
+    ............................................
+    put vs patch 
+    put u have to modify all
+    patch modify specefic field
+    ............
+    to modify the status code as you want you import httpexception from (fastapi) ---- status,httpexception,
+    .......................
+    if you want to delete an item in list of dictionaires use index
+    def find_index(id):
+   for i,p in enumerate(my_posts):
+      if p['id']==id:
+        return i
+        .......................
+status codes 
+200 found             get
+404 notfound          get
+401 deleted succesfuly delete
+201 created succesfully post       
+
+
+
+
+------------------------------- SQLLLLLLLL NOTES --------------------
+remember that constrains
+UNIQUE
+NOT NULL
+small int vs bigint >>> its all about the bits so small means small bits vs large means larger bits
+serial in postgresql means autoincrement
+in postgresql we can add default values in the constrains  ex. timestamps with the function of Now() in the default value
+the best practices in sql is capitalization
+IN OPERATOR IS BETTER THAN =.. OR = .. OR = ..
+LIKE 'A%' STARTS WITH LETTER A
+orderby == means in asc order 1,2,3,4,5 if i want desc 5,4,3,2,1
+3:36 hour???
+LIMIT COMES WITH OFFSET EG. SELECT*FROM PRODUCTS ORDER BY id LIMIT 5 OFFSET 2 THIS WILL exclude first 2 rows because of OFFSET
+WHEN INSERTING INTO VALUES WE CAN MAKE AT THE END RETURNING * THAT MEANS INSERT THEN RETURN
+DELETE FROM (TABLE NAME) WHERE CONDITION
+psycop2 is the library for postgresql to work in python or fastapi
+*---------------------------------------------*-----------------------------------------------------------
+When you return a dict, a list, or a Pydantic model from a FastAPI endpoint (like you did with return {"message": posts}),
+
+FastAPI automatically:
+
+Converts it to JSON (application/json) format
+
+Sets the correct Content-Type: application/json header in the HTTP response
+------------------------------------------ 
+-------------------------------------------------------***** SQLALCHEMY****-------------------------------------------------------
+engine is what responsible for conncecting the sqlachemy for the postgres database
+session is must be declared in order to (TALK) to that database
+declarative_base() is a function that creates a new base class for all your ORM models.
+Base becomes a Python class (not an object!) that you will inherit from when you define your database models.>>> meaning that it will be turned into tables
+in main.py i need to import models and engine 
+models.Base.metadata.create_all(bind=engine) # this creates the models eg the tables in main.py
+so first 1- do the database.py and define the url,engine,session,base
+step     2- do the models and import the base you made in the database.py along with sqlalchemy like COLUMN , INTEGER
+step     3- go to the main.py and import models and engine and sessionlocal that you made and type models.Base.metadata.create_all(bind=engine)
+then once we restart the server the tables will be created immediatly
+if the table already exist nothing will be made it will be ignored
+
+def test_posts(db:Session=Depends(get_db)):
+def	Define a function.
+db: Session	Hint that db will be a SQLAlchemy Session.
+Depends(get_db)	FastAPI will create db automatically.
+Depends is not a function call immediately.
+It’s an object that tells FastAPI:
+"When you call this route, first run the function inside Depends, and pass its result as an argument."
+-------------------------- crud with orm------------------
+1---------- Get
+def get_posts(db:Session=Depends(get_db)):
+   posts=db.query(models.Posts).all()    .ALL MEANS SELECT ALL FROM MODELS.POST WHICH IS THE TABLE
+   return{"posts":posts}
+app.get("/posts/{id}")
+def get_posts(id:int):           ##("/posts/{id}") HERE when ever the user puts the id on url its taken and been passed to the function below it
+
+1---------- POST
+def create_post(post:Post,db:Session=Depends(get_db)):
+  new_post=models.Posts(**post.dict())
+  db.add(new_post)
+  db.commit()
+  db.refresh(new_post)
+  return {"data":new_post}
+  ------------------ GET BY ID ----------------
+  @app.get("/posts/{id}")
+def get_posts(id:int , db:Session=Depends(get_db)):
+   onepost=db.query(models.Posts).filter(models.Posts.id==id).first()  
+   USE FILTER METHOD
+   ------------- DELETE ------------------
+@app.delete("/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
+def DeleteUsers(id:int,db:Session=Depends(get_db)):
+   deletedpost= db.query(models.Posts).filter(models.Posts.id==id)
+   deletedpost.delete(synchronize_session=False)
+   db.commit()
+
+      ------------- PUT ------------------
+      @app.put("/posts/{id}")
+def Update_Post(id:int,post:Post,db:Session=Depends(get_db)):
+   post_query=db.query(models.Posts).filter(models.Posts.id==id)
+   postup=post_query.first()
+   if not postup:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"the id you are getting not found {id}")
+   post_query.update(post.dict(), synchronize_session=False)
+   db.commit()
+   
+   return {"message": "updated"}
+*-*************-*-*******************************
+in the file structure schemas means the pydanic but     models means our tables
+
+---------------------- pydantic response -------------------------------------
+orm_mode = True: Accept ORM models as input.
+----
+the pydantic model atttributes should match perfectly with the sqlalchemy (its also case sensitive)
+
+-------------------- passsword hashing in fastapi----------------------------
+1- install (pip install passlib[bcrypt])
+2-import (from passlib.context import CryptContext)
+3- define a variable on top statement that is pwd_context=CryptContext(schemes=["bcrypt"],deprecated="auto")
+4-before u convert the pydantic to dict apply this hashed_password=pwd_context.hash(user.password)
+   user.password=hashed_password
+--for best practices make anew file called utils and make a fucntion called hash then just call it in main.py   
+hashed_password=utils.hash(user.password)
+   user.password=hashed_password
+------------------------
+
+
+************************************** Vip notes -****************************
+when we have the main.py with so many routes its feel abit messy so we can create seperate routes for each topic we have for ex (posts,users)
+we will do a folder called (routers) in the (app) folder and inside that (routers) we gonna make the 2 file eg(users.py) (posts.py)
+now copy the related topic to each its relate and import what you need to avoid errors by doing eg .. two dots to reach them from .. import models,schemas
+then in each of the 2 seperate files import the APIRouter 
+then create object of it          router=APIRouter()
+then rename every route you have from app.get to router.get example
+then go to the main.py and import these 2 files for eg (from .routers import posts,users)
+then do   app.include_router(posts.router)   app.include_router(users.router)
+----------------------------
+instead of always posts/ post/ post/ we can use prefix and we can group them with tags 
+router=APIRouter(
+   prefix="/users",
+   tags=['Users']
+)
+then remove the /posts from the routes
+
+--------------------------------------------------------------------
+to make the login process 
+1- make (auth.py) in the (app) folder
+2-import what you want to make a login path parameter such as sessions and these things
+3-in utils.py that u put the hash function do another function to compare these passwords 
+def verify(plain_password,hashed_password):
+    return pwd_context.verify(plain_password,hashed_password)
+4- call it in your login parameter function
+if not utils.verify(user_credentials.password,user.password):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="credentials not matched")
+    return{"token":"here is your token"}
+
+-***************---------------------------------------------------**********      
+-********************************************** JWT AUTHENTICATION *------------------------------------***********
+1- WHY WE USE IT ? 
+ASNWER: When you store user data like their name and password directly on the server, you have to constantly check these details with the database on every request. This means every time a user makes a request, the server has to contact the database to verify the credentials, which can increase load on the server.
+
+
+How to setup it
+1- pip install python-jose[cryptography]
+2-make a file in (app) folder called (ouath2.py)
+3-  import required files eg 
+from jose import jwt ,JWTError
+from datetime import datetime,timedelta
+4-define the variables for jwt eg    
+SECRET_KEY="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+5- define the function to make the access_token eg
+def create_access_token(data:dict):
+    to_encode=data.copy()
+    expire=datetime.now()+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp":expire})
+    encoded_jwt=jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
+    return encoded_jwt
+6- go to the aut.py
+from fastapi.security.oauth2 import OAuth2PasswordRequestForm
+7- go to the variable in the parameter function and change from schema to OAuth2PasswordRequestForm  eg
+def login(user_credentials:OAuth2PasswordRequestForm=Depends(),db:Session=Depends(database.get_db)):
+but here you have to modify it because OAuth2PasswordRequestForm change the email to username
+
+8- create schemas for the token 
+class Token(BaseModel):
+     access_token:str
+     token_type:str
+class TokenData(BaseModel):
+     id:Optional[int]
+
+9- define verify acces token and get current user function
+
+def verify_access_token(token:str,credentials_exception):
+    try:
+        payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
+        id:str= payload.get("user_id")
+        if id is None:
+            raise credentials_exception
+        token_data=schemas.TokenData(id=id)
+    except JWTError:
+        raise credentials_exception
+    return token_data
+-----------------
+def get_current_user(token:str=Depends(oauth_scheme)):
+    credentials_exception=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail=f"couldn't validate credentials ",headers={"www-authenticate":"bearer"})
+    return verify_access_token(token,credentials_exception)
+this automatically gets the id
+*----------------------------*
+for manual
+ef get_current_user(token:str=Depends(oauth_scheme),db:Session=Depends(database.get_db)):
+   credentials_exception=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="couldn't validate credentials",headers={"www-authenticate":"bearer"})
+   user_token=verify_access_token(token,credentials_exception)
+   user=db.query(models.Users).filter(models.Users.id==user_token.id).first()
+   return user
+   -*--------------------------------------
+
+
+use postman enviroments {{url}}   
+-*-------------***********************************************************************---------------
+use postman test to make enviroment to put the jwt token automatically for you 
+in login postman do that in test 
+pm.environment.set("JWT", pm.response.json().access_token);
+now update the whole authorization in other request
+-********************sql postgresq-*/-------------
+foreignkey ondelete=cascade means when the user account is deleted delete all his related posts
+-------------------------------------------------
+use jwt to make the user delete or update his only posts and create posts with the his relevant id
+INSERT
+  new_post=models.Posts(owner_id=current_user.id,**post.dict())
+
+lets say we want to show with the posts the information about the owner all we have to do is go to the (posts) model
+then do the following 
+    owner=relationship("Users")
+then go to your schema and modify it as you want eg
+    class Post(BaseModel):
+    title:str
+    content:str
+    published:bool
+    created_at:datetime
+    owner:UserOut
+    class Config:
+         from_attributes=True
+
+---------------------------------------query parameter-----------------------
+to add query parameter u just type in the funcion the name of it eg
+def get_posts(db:Session=Depends(get_db),current_user:int=Depends(oauth2.get_current_user),limit=10): -- look at the limit here
+then use .limit() to get what u want
+then if u want to use skip for pagination u use (OFFSET) along with the specefic query parameter eg
+def get_posts(db:Session=Depends(get_db),current_user:int=Depends(oauth2.get_current_user),limit:int=10, skip:int = 0):
+   posts=db.query(models.Posts).limit(limit).offset(skip).all()
+   return posts
+
+-------------
+to implement search in the same contenxt define a parameter called search with optional str then   use contains
+   posts=db.query(models.Posts).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()
+
+-*------------- make enviroment variable
+to set enviroment variables first define config.py in app folder
+then create .env file in the main path and declare that inside 
+DATABASE_HOSTNAME=localhost
+DATABASE_PORT=5432
+DATABASE_PASSWORD=1
+DATABASE_NAME=fastapi
+DATABASE_USERNAME=postgres
+SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+then import from pydantic_settings import BaseSettings
+then make the pydantic model 
+class Settings(BaseSettings):
+    database_hostname:str
+    database_port:str
+    database_password:str
+    database_name:str
+    database_username:str
+    secret_key:str
+    algorithm:str
+    access_token_expire_minutes:int
+    class Config:
+        env_file=".env"
+settings=Settings()
+----------------------------------------------------------ADDING VOTE SYSTEM ---*******************************************************
+1- create route file in routers foulder call it vote.py
+2-define the schema for the vote eg
+class Vote(BaseModel):
+     post_id:int
+     dir: int = Field(..., ge=0, le=1)      Field means its only 1 or 2 
+3- set the route eg 
+@router.post("/",status_code=status.HTTP_201_CREATED)
+def vote(vote:schemas.Vote,db:Session=Depends(database.get_db),current_user:int=Depends(oauth2.get_current_user)):
+    vote_query=db.query(models.Votes).filter(models.Votes.post_id==vote.post_id,models.Votes.user_id==current_user.id)
+    found_vote=vote_query.first()
+    if vote.dir==1:
+        if found_vote:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,detail="you already liked that post")
+        new_vote=models.Votes(post_id=vote.post_id,user_id=current_user.id)
+        db.add(new_vote)
+        db.commit()
+        return{"message":"your vote added succesfully"}
+    if not found_vote:
+        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT,detail="you cant do that its not even liked")
+    db.delete(found_vote)
+    db.commit()
+    return{"message": "your vote deleted succesfully"}
+4- to explain whats above 
+----------------****************** sql -*--------------
+group by is always used with aggregate function like count() you should group by unique column or it will raise error
+select posts.*, count(votes.post_id) as votecounts from posts right join votes
+on posts.id=votes.post_id where posts.id=10
+group by posts.id   
+
+
+-------------------- join in sqlalchemy
+post_vote = (
+        db.query(models.Posts, func.count(models.Votes.post_id).label("votes"))
+        .join(models.Votes, models.Votes.post_id == models.Posts.id, isouter=True)
+        .filter(models.Posts.id == id)
+        .group_by(models.Posts.id)
+        .first()
+    )
+
+    if not post_vote:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
+
+    post, votes = post_vote
+    return {"post": post, "votes": votes}
+
+-------------------------------------------****ALEMBIC *********------------------------------------------- DATABASE MIGRATIONS
+pip install ALEMBIC
+alembic init alembic
+go to env.py import Base from models
+and set metadata=Base.metadata
+go to alembic.ini and override the value doing this bc u dont want to keep the secrets in ini go to env.py and do that
+config = context.config
+config.set_main_option("sqlalchemy.url",f"postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}")
+
+then to begin 
+1-alembic revision -m "create posts table" or any table you want
+-***************************
+alembic revision --autogenerate -m"type what you want" that is very good ,smart to create whats new in your models
+
+
+
+
+---------------*****------------- DEPLOYMENT CORS*----------------------------
+we use cors so its all about which urls are allowed to connect to our api 
+to apply that
+1- from fastapi.middleware.cors import CORSMiddleware
+2- origins=["https://www.google.com"]    that is the allowed urls
+app.add_middleware(                      that is to add that cors middleware
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+-------**********------------------- Git -**************************--------------
+1- make the gitignore file in main root
+2-put in it the pycache,.env,venv/
+3-make requirements.txt in main root
+4-in terminal type pip freeze > requirements.txt this will copy them to that file
+5- to install them back type pip install -r requirements.txt
+6- install git from the website
+7- go to terminal git init
+8- git add --all
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
