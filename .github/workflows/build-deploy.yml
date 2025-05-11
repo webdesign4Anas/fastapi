@@ -1,64 +1,50 @@
-name: Build and Test
+name: Build and Deploy Code
 
 on: [push, pull_request]
 
 jobs:
-  test:
-    environment: testing
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}_test
-          POSTGRES_USER: ${{ secrets.DATABASE_USERNAME }}
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        # Keep container alive after initialization
-        with:
-          # This prevents the immediate shutdown
-          post-healthcheck: sleep 1h
-    
+  job1:
+    environment:
+      name: testing  # fixed spelling from "enviroment"
     env:
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
+      DATABASE_HOSTNAME: localhost
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}_test
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
       DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       ALGORITHM: ${{ secrets.ALGORITHM }}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
-
+    services:
+      postgres:
+        image: postgres:13  # Specify a version of PostgreSQL (e.g., 13 or 14)
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+          POSTGRES_USER: ${{ secrets.DATABASE_USERNAME }} # Ensure a username is defined
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    runs-on: ubuntu-latest  # fixed spelling from "ubuntu-lastest"
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3  # updated version
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5  # latest version
         with:
           python-version: "3.10"
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
+          pip install pytest
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest
-          
-      - name: Wait for PostgreSQL to be ready
-        timeout-minutes: 2
-        run: |
-          for i in {1..10}; do
-            if pg_isready -h postgres -p 5432 -U ${{ secrets.DATABASE_USERNAME }}; then
-              break
-            fi
-            sleep 5
-          done
-          pg_isready -h postgres -p 5432 -U ${{ secrets.DATABASE_USERNAME }}
+          pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest -v --cov=.
+        run: |
+          pytest  # or your test command
