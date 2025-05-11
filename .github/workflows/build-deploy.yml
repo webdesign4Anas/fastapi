@@ -7,17 +7,17 @@ jobs:
     environment:
       name: testing  # fixed spelling from "enviroment"
     env:
-      DATABASE_HOSTNAME: ${{ secrets.DATABASE_HOSTNAME }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+      DATABASE_HOSTNAME: localhost
+      DATABASE_PORT: 5432
+      DATABASE_PASSWORD: 1
+      DATABASE_NAME: fastapi_test
+      DATABASE_USERNAME: postgres
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       ALGORITHM: ${{ secrets.ALGORITHM }}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
     services:
       postgres:
-        image: postgres:13  # Specify a version of PostgreSQL (e.g., 13 or 14)
+        image: postgres  # Specify a version of PostgreSQL (e.g., 13 or 14)
         env:
           POSTGRES_PASSWORD: 1
           POSTGRES_DB: fastapi_test
