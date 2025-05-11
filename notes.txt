@@ -392,21 +392,339 @@ app.add_middleware(                      that is to add that cors middleware
 6- install git from the website
 7- go to terminal git init
 8- git add --all
+9- git commit -m "first commit"
+10- git branch -m main
+11- git remote add 
+12- git push u- origin main
+---------------------************************-------------
+FastAPI Deployment Guide to Ubuntu Server (VM)
+ This guide walks you through deploying a FastAPI project on an Ubuntu server (or VM), including SSH
+ setup, PostgreSQL configuration, environment preparation, and project deployment.
+ 1. Prepare the Ubuntu VM
+ Install OpenSSH Server
+ In your Ubuntu VM terminal:
+ sudo apt update
+ sudo apt install openssh-server
+ Note: This allows remote SSH access to your Ubuntu VM.
+ Get the VM IP Address
+ Run:
+ ip a
+ Look for the inet address under your active network adapter (e.g., 192.168.x.x).
+ 2. Connect via SSH from Windows
+ In your Windows terminal or PowerShell:
+ ssh username@<VM-IP-address>
+ Replace username with your Ubuntu VM user.
+ Replace <VM-IP-address> with the IP you got earlier.
+ Accept the prompt by typing yes when asked.
+ 3. Update & Upgrade the Server
+ Once inside the server via SSH:
+ sudo apt update
+ sudo apt upgrade -y
+ 4. Install Required Packages
+ Python & Virtual Environment:
+ sudo apt install python3-pip
+ sudo apt install python3-virtualenv
+ PostgreSQL:
+ sudo apt install postgresql postgresql-contrib -y
+ 5. Configure PostgreSQL
+ View Users (Optional):
+ sudo cat /etc/passwd
+ Access PostgreSQL CLI:
+ sudo -u postgres psql
+ Set PostgreSQL Password:
+ \password postgres
+ Exit PostgreSQL:
+ \q
+ 6. Configure PostgreSQL for Remote Access
+ Navigate to Config Directory:
+ cd /etc/postgresql/16/main
+ ls
+ Edit postgresql.conf:
+ sudo nano postgresql.conf
+ Change:
+ listen_addresses = '*'
+ Edit pg_hba.conf:
+ sudo nano pg_hba.conf
+ Update these lines (replace peer/trust with md5 or scram-sha-256):
+ # Local connections
+ local   all             all                                     md5
+ # IPv4 remote connections
+ host    all             all             0.0.0.0/0               scram-sha-256
+ # IPv6 remote connections
+ host    all             all             ::/0                    scram-sha-256
+Restart PostgreSQL:
+ sudo systemctl restart postgresql
+ 7. Connect Using pgAdmin
+ Open pgAdmin on your host machine.
+ Create a new server:
+ Host: Your VM's IP
+ Username: postgres
+ Password: (what you set earlier)
+ Port: 5432
+ 8. Create a Non-root User for Security
+ Add a New User:
+ sudo adduser yourusername
+ Grant Admin Privileges:
+ sudo usermod -aG sudo yourusername
+ Note: It's a best practice to avoid using the root user for SSH access.
+ Reconnect via SSH with New User:
+ exit
+ ssh yourusername@<VM-IP-address>
+ 9. Set Up the Application Environment
+ Create App Directory:
+ mkdir app
+ cd app
+ Create & Activate Virtual Environment:
+ virtualenv venv
+ source venv/bin/activate
+ Note: Use deactivate to exit the virtual environment when needed.
+ Create Source Folder for Your App:
+ mkdir src
+ cd src
+ Clone Your FastAPI Project:
+ git clone https://github.com/webdesign4Anas/fastapi.git .
+ Note: The . prevents Git from creating a nested folder — it clones directly into src.
+ Install Python Dependencies:
+ cd ..
+ source venv/bin/activate
+ pip install -r src/requirements.txt
+ 10. (Optional) Install PostgreSQL Headers for Some Python Packages
+ sudo apt install libpq-dev
+ Note: This is needed if your app uses PostgreSQL-specific packages like psycopg2
+ ---
+ to set your env variables 
+ 1-create .env file in main root and put in it the variables you want
+ 2-put these in .profile so it dont go away when reboot happens 
+ nano .profile 
+ set -o allexport; source /home/fastapi/.env; set +o allexport
+ then do print env to check
+now since everything is set activate venv then almebic ugprade head to put the tables in the database
+install gunicorn as a process manager
+Web servers need to handle multiple requests at the same time to provide a responsive and fast user experience. However, because Python is typically single-threaded (due to its Global Interpreter Lock, or GIL), a single process can only handle one request at a time.
+This limitation means that, in a busy web app, if only one process is running, it will have to handle requests sequentially, potentially slowing things down if there are many requests coming in at once.
+To solve this, Gunicorn runs multiple worker processes to handle many requests simultaneously. Each worker can independently handle a request, which improves the server's ability to handle high levels of traffic.
+
+
+then pip install httptools, uvloop
+then in order to run the server
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+how to make this run while reboot and background process
+1- to know the services you had type that
+cd /etc/systemd/system/
+then ls
+now u have them
+then type your service name by 
+sudo nano api.service
+then copy the files u had in gunicorn.service in it 
+then to know if its working or not do this 
+systemctl status api
+then restart 
+systemctl restart api
+then you got it 
+now to make sure the service start upon reboot do that 
+sudo systemctl enable api 
+now it will run with reboot
+------------**************************  Nginx    - *-*-*-*-*-**************
+1- install Nginx 
+sudo apt install Nginx -y
+2-enable Nginx service
+systemctl start Nginx
+3-optimize it 
+cd /etc/nginx/sites-available/
+4-open default 
+sudo nano default
+then paste the location sentences in the listen section in default 
+5-restart again
+systemctl restart nginx
+tata you installed nginx properly 
+------------
+now you need to make it https NOT http
+install certbot
+---------------------------------------------------------------- Docker
+1- install docker normally 
+2- pip install docker in venv 
+3- create Dockerfile in the root with the following
+
+FROM python:3.9.7
+WORKDIR /usr/src/app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . . 
+CMD [ "uvicorn","app.main:app","--host","0.0.0.0","--port","8000" ]
+* install that image 
+docker build -t fastapi .
+
+4- to see your images do that 
+docker image ls
+5- use docker-compose.yml its BETTER than docker-run (multiple vs single)
+create docker-compose.yml in root Directory
+docker-compose is better than do it alone like docker build -t fastapi . 
+6-set your compose 
+version: '3'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"  # Corrected the ports section
+    environment:  # Corrected the typo here
+      - DATABASE_HOSTNAME=localhost
+      - DATABASE_PORT=5432
+      - DATABASE_PASSWORD=1
+      - DATABASE_NAME=fastapi
+      - DATABASE_USERNAME=postgres
+      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+
+7- docker-compose up -- build
+now you need postgres service to connect them 
+
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"  # Corrected the ports section
+    environment:  # Corrected the typo here
+      - DATABASE_HOSTNAME=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_PASSWORD=1
+      - DATABASE_NAME=fastapi
+      - DATABASE_USERNAME=postgres
+      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=1
+      - POSTGRES_DB=fastapi
+
+    volumes:
+      -postgres_db:/var/lib/postgresql/data
+volumes:
+      postgres_db:
+
+to push your image to dockerhub 
+docker push your image
+docker push leoanas22/fastapi:tagname
+            username       
+
+*you should make 2 docker compose 1 for dev 1 for prod 
+then to build it up do that 
+docker-compose -f docker-compose-dev.yml up -d
+in production compose we dont do build we do image : (the image you put in dockerhub)
+
+*---------------------************ubuntu deployment tips -------------------------
+1- sudo apt update && sudo apt upgrade -y
+that update checks and upgrade install that updates that -y flags means say yes
+2-install required packages 
+sudo apt install python3-pip python3-virtualenv postgresql postgresql-contrib libpq-dev -y
 
 
 
 
 
- 
+-*--------------- testing using pytest -**********
+1-pip install pytest 
+2-create (tests) folder inside it put ur testfiles
+3-import from the original function what u want 
+4- if u have function and you wanna pass diffenrent number EG
+from app.calculations import add
+import pytest
+@pytest.mark.parametrize("num1,num2,result",[
+    (1,2,3),
+    (9,1,10),
+    (12,8,20)
+])
+def test_add(num1,num2,result):
+    print("test1")
+    assert add(num1,num2)==result
+
+5- use fixuters to aviod repeating code along with parametize eg:
+from app.calculations import add,Bank
+import pytest
+
+
+
+@pytest.fixture
+def zero_bank_account():
+    print("creating empty  bank account ")   #creating new instance 
+    return Bank()
+@pytest.fixture
+def defined_bank_account():
+    print("creating 50$  bank account ")       #creating new instance but with custom intial value
+    return Bank(50)
 
 
 
 
 
 
+@pytest.mark.parametrize("num1,num2,result",[
+    (1,2,3),
+    (9,1,10),
+    (12,8,20)
+])
+def test_add(num1,num2,result):
+    print("test1")
+    assert add(num1,num2)==result
 
 
+def test_initial_bank():
+    assert Bank().balance==0
 
+def test_deposit(zero_bank_account):
+    zero_bank_account.deposit(30)
+    
+    assert zero_bank_account.balance==30
+
+def test_withdrew(defined_bank_account):
+    
+    defined_bank_account.withdraw(30)
+    assert defined_bank_account.balance==20
+
+
+--------- to test with fastapi use testclient
+1-from app.main import app
+from fastapi.testclient import TestClient
+client=TestClient(app)
+2- test the root route in main.py 
+def test_root():
+   res= client.get("/")
+   print(res.json().get("message"))
+   assert res.json().get("message")=="hello anas"
+   assert res.status_code==200
+3- if you want your pytest to stop with the first error put this flag -x
+4-to run your test 
+ pytest --disable-warnings  -v -s -x
+
+ 5- to test create users 
+ def test_create_users():
+   res=client.post("/users/",json={"email":"anas@gmail.com","password":"22526618a"})
+   new_user=schemas.UserOut(**res.json())
+   assert new_user.email=="anas@gmail.com"
+   assert res.status_code==201
+-------------**
+
+------------------------------------- to create testing database -----------------
+1-copy the code from database and paste it to your testing module
+2-import the needed stuff
+3-override the getdb dependcy with the new dp 
+TestingSessionLocal=sessionmaker(autoflush=False,autocommit=False,bind=engine)
+def overide_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+app.dependency_overrides[get_db]=overide_get_db
+4- to add the tables to the testing database put that 
+Base.metadata.create_all(bind=engine)
+5-start your testing now you got all done to test
+---- 
 
 
 
