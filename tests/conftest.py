@@ -9,8 +9,8 @@ from app import models
 import pytest
 client=TestClient(app)
 
-
-SQL_ALCHEMY_URL=f'postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}_test'
+TEST_DB_NAME = "fastapi_test"
+SQL_ALCHEMY_URL=f'postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{TEST_DB_NAME}'
 
 engine=create_engine(SQL_ALCHEMY_URL)
 
