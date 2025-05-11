@@ -19,9 +19,9 @@ jobs:
       postgres:
         image: postgres:13  # Specify a version of PostgreSQL (e.g., 13 or 14)
         env:
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_PASSWORD: 1
           POSTGRES_DB: fastapi_test
-          POSTGRES_USER: ${{ secrets.DATABASE_USERNAME }}  # Ensure a username is defined
+          POSTGRES_USER: postgres  # Ensure a username is defined
         ports:
           - 5432:5432
         options: >-
